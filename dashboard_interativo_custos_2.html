@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Interativo de Custos Administrativos</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-main: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --primary: #1f497d;
+            --primary-light: #e8f0fe;
+            --accent: #2563eb;
+            --border: #e5e7eb;
+            --hover-bg: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            padding: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 24px;
+        }
+
+        header h1 {
+            font-size: 24px;
+            color: var(--primary);
+            margin-bottom: 6px;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* KPI Cards Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .kpi-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            background: var(--primary-light);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .kpi-info h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .kpi-info p {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Dashboard Layout Grid */
+        .dash-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .dash-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Filter Pills */
+        .filter-container {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .filter-btn {
+            background: #f1f5f9;
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Interactive Drilldown Table */
+        .drill-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .drill-table th {
+            background: #f8fafc;
+            text-align: left;
+            padding: 10px 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .drill-table tr.row-group {
+            background-color: #f8fafc;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .drill-table tr.row-group:hover {
+            background-color: var(--primary-light);
+        }
+
+        .drill-table tr.row-cat {
+            background-color: #ffffff;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            display: none;
+        }
+
+        .drill-table tr.row-cat:hover {
+            background-color: #f1f5f9;
+        }
+
+        .drill-table tr.row-desc {
+            background-color: #fafafa;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+            display: none;
+        }
+
+        .drill-table td {
+            padding: 10px 12px;
+        }
+
+        .indent-1 {
+            padding-left: 28px !important;
+        }
+
+        .indent-2 {
+            padding-left: 48px !important;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .toggle-icon {
+            display: inline-block;
+            width: 16px;
+            transition: transform 0.2s;
+        }
+
+        .expanded > td > .toggle-icon {
+            transform: rotate(90deg);
+        }
+
+        /* Breadcrumb / Status */
+        .breadcrumb {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+        .breadcrumb span {
+            color: var(--primary);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Dashboard Interativo de Custos Administrativos</h1>
+        <p>Navegue interativamente através da hierarquia <strong>Grupo &gt; Categoria &gt; Descrição do Custo</strong></p>
+    </header>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-icon"><i data-lucide="dollar-sign"></i></div>
+            <div class="kpi-info">
+                <h3>Custo Total</h3>
+                <p id="kpi-total">R$ 19.083,73</p>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon"><i data-lucide="file-text"></i></div>
+            <div class="kpi-info">
+                <h3>Lançamentos</h3>
+                <p id="kpi-count">29 itens</p>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon"><i data-lucide="pie-chart"></i></div>
+            <div class="kpi-info">
+                <h3>Maior Grupo</h3>
+                <p id="kpi-top">PREDIAL (37,51%)</p>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon"><i data-lucide="layers"></i></div>
+            <div class="kpi-info">
+                <h3>Grupos Ativos</h3>
+                <p>6 Grupos</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Section -->
+    <div class="dash-grid">
+        <!-- Donut Chart Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i data-lucide="pie-chart"></i> Distribuição Por Centros de Custos</div>
+            </div>
+            <div class="filter-container" id="chart-filters">
+                <button class="filter-btn active" onclick="filterChart('all')">Todos os Grupos</button>
+            </div>
+            <div style="position: relative; height: 320px; width: 100%;">
+                <canvas id="costChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Interactive Drilldown List -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i data-lucide="list-tree"></i> Detalhamento Interativo</div>
+                <span class="badge" id="drill-status">Clique em um grupo para expandir</span>
+            </div>
+            <div style="max-height: 380px; overflow-y: auto;">
+                <table class="drill-table" id="drillTable">
+                    <thead>
+                        <tr>
+                            <th>Estrutura / Item</th>
+                            <th class="text-right">% Part.</th>
+                            <th class="text-right">Valor (R$)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="drillBody">
+                        <!-- Filled by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Complete Table List -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><i data-lucide="table"></i> Tabela Completa de Despesas</div>
+            <div class="filter-container" id="group-filter-pills">
+                <button class="filter-btn active" onclick="filterTable('ALL')">Todos</button>
+                <button class="filter-btn" onclick="filterTable('PREDIAL')">Predial</button>
+                <button class="filter-btn" onclick="filterTable('CORPORATIVO')">Corporativo</button>
+                <button class="filter-btn" onclick="filterTable('COMERCIAL')">Comercial</button>
+                <button class="filter-btn" onclick="filterTable('FROTA')">Frota</button>
+                <button class="filter-btn" onclick="filterTable('TI')">TI</button>
+                <button class="filter-btn" onclick="filterTable('BENS MATERIAIS')">Bens Materiais</button>
+            </div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="drill-table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Grupo</th>
+                        <th>Categoria</th>
+                        <th>Subcategoria</th>
+                        <th>Descrição</th>
+                        <th>Fornecedor</th>
+                        <th>Frequência</th>
+                        <th class="text-right">Valor (R$)</th>
+                    </tr>
+                </thead>
+                <tbody id="fullTableBody">
+                    <!-- Filled by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Data structure extracted from Custos totais do ADM.xlsx
+        const rawData = [
+            { data: '01/07/2026', grupo: 'PREDIAL', cat: 'SEGURO', subcat: 'RENOVAÇÃO', desc: 'RENOVAÇÃO DO SEGURO FIANÇA', forn: 'PORTO SEGURO', val: 634.17, freq: 'MENSAL' },
+            { data: '09/07/2026', grupo: 'CORPORATIVO', cat: 'PEDIDO DE COMPRAS', subcat: 'MATERIAIS DE CONSUMO', desc: 'ITENS DE INSUMOS QUE PRECISAM DE REPOSIÇÃO MENSAL ASSIM COMO ITENS PARA MELHORIAS', forn: '-', val: 1287.55, freq: 'MENSAL' },
+            { data: '09/07/2026', grupo: 'CORPORATIVO', cat: 'ENDOMARKETING', subcat: 'FESTA JUNINA', desc: 'PEDIDO DE COMPRAS PARA ALIMENTOS E INSUMOS PARA REALIZAR O EVENTO', forn: '-', val: 803.70, freq: 'ÚNICA' },
+            { data: '09/07/2026', grupo: 'COMERCIAL', cat: 'PEDIDO DE COMPRAS', subcat: 'FEIRAS E EVENTOS', desc: 'INSUMOS, ALIMENTOS E BRINDES PARA PARTICIPAÇÃO DE FEIRAS', forn: '-', val: 291.02, freq: 'ÚNICA' },
+            { data: '16/07/2026', grupo: 'FROTA', cat: 'MANUTENÇÃO', subcat: 'BORRACHARIA', desc: 'CONCERTO INTERNO DE UM DOS PNEUS DA FIORINO', forn: 'BORRACHARIA DO GAUCHO', val: 60.00, freq: 'ÚNICA' },
+            { data: '20/07/2026', grupo: 'FROTA', cat: 'MANUTENÇÃO', subcat: 'PREVENTIVA', desc: 'FOI REALIZADO A TROCA DE OLEO E DE LAMPADAS QUEIMADAS', forn: 'MERCADOCAR', val: 307.23, freq: 'ÚNICA' },
+            { data: '22/07/2026', grupo: 'PREDIAL', cat: 'MANUTENÇÃO', subcat: 'EXTINTORES', desc: 'FOI REALIZADO A TROCA DE EXTINTORES', forn: 'WTLFIRE', val: 340.00, freq: 'ÚNICA' },
+            { data: '24/07/2026', grupo: 'FROTA', cat: 'INFRAÇÕES', subcat: 'MULTAS', desc: 'MULTA EM ATRASO DO MÊS DE JANEIRO', forn: 'DETRAN SP', val: 895.63, freq: 'ÚNICA' },
+            { data: '29/07/2026', grupo: 'CORPORATIVO', cat: 'ENDOMARKETING', subcat: 'FESTA JUNINA', desc: 'COMPRA DE SALGADINHOS', forn: 'IFOOD', val: 277.98, freq: 'ÚNICA' },
+            { data: '29/07/2026', grupo: 'CORPORATIVO', cat: 'ENDOMARKETING', subcat: 'FESTA JUNINA', desc: 'PÃES E GELO COMPRADO PARA A FESTA JUNINA', forn: 'BETH MANIA', val: 38.03, freq: 'ÚNICA' },
+            { data: '29/07/2026', grupo: 'CORPORATIVO', cat: 'ENDOMARKETING', subcat: 'CONSUMOS', desc: 'CONSUMO DE PÃES', forn: 'BETH MANIA', val: 472.57, freq: 'MENSAL' },
+            { data: '30/07/2026', grupo: 'PREDIAL', cat: 'SEGURANÇA', subcat: 'CHAVES', desc: 'FOI EMITIDA 9 CÓPIAS DE CHAVES', forn: 'SUKA CHAVEIRO', val: 135.00, freq: 'ÚNICA' },
+            { data: '30/07/2026', grupo: 'PREDIAL', cat: 'SEGURANÇA', subcat: 'ALARMES', desc: 'CONTRATAÇÃO DE UM PRESTADOR DE SERVIÇOS AUTORIZADO DA INTELBRAS PARA CONFIGURAÇÃO DE ALARMES', forn: 'STS ALARMES', val: 295.00, freq: 'ÚNICA' },
+            { data: '30/07/2026', grupo: 'PREDIAL', cat: 'SEGURANÇA', subcat: 'FECHADURA', desc: 'FOI REALIZADO A TROCA DA FECHADURA ELETRONICA E A REPOSIÇÃO DO INTERFONE', forn: 'EDUARDO GUERRERO', val: 1220.00, freq: 'ÚNICA' },
+            { data: '31/07/2026', grupo: 'CORPORATIVO', cat: 'ENDOMARKETING', subcat: 'FESTA JUNINA', desc: 'REALIZADO A COMPRA DE VOUCHER PARA RESTAURANTE | PRÊMIO PARA FESTA JUNINA', forn: 'COCO BAMBU', val: 200.00, freq: 'ÚNICA' },
+            { data: '31/07/2026', grupo: 'CORPORATIVO', cat: 'ENDOMARKETING', subcat: 'FESTA JUNINA', desc: 'REALIZADO A COMPRA DE VOUCHER PARA GAMES | PRÊMIO PARA FESTA JUNINA', forn: 'PLAYSTATION', val: 200.00, freq: 'ÚNICA' },
+            { data: '31/07/2026', grupo: 'CORPORATIVO', cat: 'ENDOMARKETING', subcat: 'FESTA JUNINA', desc: 'REALIZADO A COMPRA DE VOUCHER PARA MASSAGEM | PRÊMIO PARA FESTA JUNINA', forn: 'BUDDHA SPA', val: 250.00, freq: 'ÚNICA' },
+            { data: '04/08/2026', grupo: 'PREDIAL', cat: 'LIMPEZA', subcat: 'TERCEIRIZADOS', desc: 'CONTRATAÇÃO DA LARISSA SERVICE', forn: 'LARISSA SERVICE', val: 3350.00, freq: 'MENSAL' },
+            { data: '04/08/2026', grupo: 'CORPORATIVO', cat: 'ENDOMARKETING', subcat: 'ANIVERSARIANTES', desc: 'COMPRA DO BOLO PARA ANIVERSARIANTES', forn: 'GF CONFEITARIA', val: 210.00, freq: 'MENSAL' },
+            { data: '05/08/2026', grupo: 'PREDIAL', cat: 'MANUTENÇÃO', subcat: 'LABORATORIO', desc: 'COMPRA DE PISTÃO PARA TROCA DOS ELEVADORES USADOS PARA DICICLOS', forn: 'GRUPO OVD', val: 164.47, freq: 'ÚNICA' },
+            { data: '06/08/2026', grupo: 'COMERCIAL', cat: 'MATERIAIS PROMOCIONAIS', subcat: 'FOLHETO E CARTÕES DE VISITA', desc: 'REALIZADO A COMPRA DE FOLHETOS PARA PARTICIPAÇÃO DA FEIRA COP', forn: '3TORRES', val: 2031.90, freq: 'ÚNICA' },
+            { data: '10/08/2026', grupo: 'CORPORATIVO', cat: 'PEDIDO DE COMPRAS', subcat: 'MATERIAIS DE CONSUMO', desc: 'ITENS DE INSUMOS QUE PRECISAM DE REPOSIÇÃO MENSAL ASSIM COMO ITENS PARA MELHORIAS', forn: '-', val: 1258.88, freq: 'MENSAL' },
+            { data: '10/08/2026', grupo: 'CORPORATIVO', cat: 'PEDIDO DE COMPRAS', subcat: 'PROTEÇÕES E UNIFORMES', desc: 'COMPRA DE ROUPAS PROFISSIONAIS E DE MATERIAS DE PROTEÇÃO', forn: '-', val: 882.56, freq: 'ÚNICA' },
+            { data: '10/08/2026', grupo: 'CORPORATIVO', cat: 'PEDIDO DE COMPRAS', subcat: 'KIT DE PRIMEIROS SOCORROS', desc: 'COMPRA DE INSUMOS PARA COMPOR O KIT DE PRIMEIROS SOCORROS', forn: 'PAGUEMENOS', val: 85.13, freq: 'ÚNICA' },
+            { data: '17/08/2026', grupo: 'TI', cat: 'AQUISIÇÃO', subcat: 'MONITOR', desc: 'AQUISIÇÃO DE UM MONITOR A PEDIDO DA JESSICA', forn: 'MERCADOLIVRE', val: 662.00, freq: 'ÚNICA' },
+            { data: '17/08/2026', grupo: 'BENS MATERIAIS', cat: 'AQUISIÇÃO', subcat: 'MOVEIS', desc: 'AQUISIÇÃO DE SUPORTE PARA MONITOR A PEDIDO DA JESSICA', forn: 'MERCADOLIVRE', val: 54.91, freq: 'ÚNICA' },
+            { data: '19/08/2026', grupo: 'COMERCIAL', cat: 'UNIFORME', subcat: 'AQUISIÇÃO', desc: 'COMPRA DE CAMISA SOCIAL PARA LUANA', forn: 'FASCYNIOS', val: 189.00, freq: 'ÚNICA' },
+            { data: '19/08/2026', grupo: 'COMERCIAL', cat: 'UNIFORME', subcat: 'BORDADO', desc: 'CAMISA SOCIAL BORDADO COM A LOGO BRMOBILITY', forn: 'TATO SERVIÇOS', val: 30.00, freq: 'ÚNICA' },
+            { data: '19/08/2026', grupo: 'CORPORATIVO', cat: 'LAUDOS E CERTIFICADOS', subcat: 'LAUDO ERGONOMICO', desc: 'ATUALIZAÇÃO DO LAUDO ERGONOMICO PARA DICICLOS', forn: 'POSTURE', val: 600.00, freq: 'ÚNICA' },
+            { data: '19/08/2026', grupo: 'FROTA', cat: 'MANUTENÇÃO', subcat: 'SISTEMA DE FREIOS', desc: 'FOI FEITO A MANUTENÇÃO NO SISTEMA DE FREIOS DA FIORINO', forn: 'ISA AUTO CENTER', val: 627.00, freq: 'ÚNICA' },
+            { data: '24/08/2026', grupo: 'CORPORATIVO', cat: 'ENDOMARKETING', subcat: 'ANIVERSARIANTES', desc: 'COMPRA DO BOLO PARA ANIVERSARIANTES', forn: 'GF CONFEITARIA', val: 210.00, freq: 'MENSAL' },
+            { data: '24/08/2026', grupo: 'PREDIAL', cat: 'MANUTENÇÃO', subcat: 'LABORATORIO', desc: 'INSTALAÇÃO DE FILTRO DE PRESSÃO DE AR', forn: 'GP COMPRESSORES', val: 1020.00, freq: 'ÚNICA' }
+        ];
+
+        const grandTotal = rawData.reduce((acc, r) => acc + r.val, 0);
+
+        // Colors
+        const groupColors = {
+            'PREDIAL': '#1f497d',
+            'CORPORATIVO': '#2563eb',
+            'COMERCIAL': '#3b82f6',
+            'FROTA': '#60a5fa',
+            'TI': '#93c5fd',
+            'BENS MATERIAIS': '#cbd5e1'
+        };
+
+        // Format Currency
+        function fmtBRL(v) {
+            return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // Initialize Chart
+        let myChart;
+        function initChart() {
+            const ctx = document.getElementById('costChart').getContext('2d');
+            
+            // Aggregate by Grupo
+            const grpMap = {};
+            rawData.forEach(r => {
+                grpMap[r.grupo] = (grpMap[r.grupo] || 0) + r.val;
+            });
+
+            const labels = Object.keys(grpMap);
+            const values = Object.values(grpMap);
+            const bgColors = labels.map(l => groupColors[l] || '#94a3b8');
+
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: bgColors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const val = ctx.raw;
+                                    const pct = ((val / grandTotal) * 100).toFixed(1);
+                                    return ` ${ctx.label}: ${fmtBRL(val)} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Build Interactive Drilldown Table
+        function buildDrillTable() {
+            const tbody = document.getElementById('drillBody');
+            tbody.innerHTML = '';
+
+            // Group hierarchy
+            const hierarchy = {};
+            rawData.forEach(r => {
+                if (!hierarchy[r.grupo]) hierarchy[r.grupo] = { total: 0, cats: {} };
+                hierarchy[r.grupo].total += r.val;
+
+                if (!hierarchy[r.grupo].cats[r.cat]) hierarchy[r.grupo].cats[r.cat] = { total: 0, items: [] };
+                hierarchy[r.grupo].cats[r.cat].total += r.val;
+                hierarchy[r.grupo].cats[r.cat].items.push(r);
+            });
+
+            let gIndex = 0;
+            for (const grpName in hierarchy) {
+                const grpData = hierarchy[grpName];
+                const grpPct = ((grpData.total / grandTotal) * 100).toFixed(1);
+                const grpRowId = `grp-${gIndex}`;
+
+                // Group Row
+                const trGrp = document.createElement('tr');
+                trGrp.className = 'row-group';
+                trGrp.onclick = () => toggleGroup(grpRowId, trGrp);
+                trGrp.innerHTML = `
+                    <td><span class="toggle-icon">▶</span> <strong>${grpName}</strong></td>
+                    <td class="text-right"><span class="badge">${grpPct}%</span></td>
+                    <td class="text-right"><strong>${fmtBRL(grpData.total)}</strong></td>
+                `;
+                tbody.appendChild(trGrp);
+
+                let cIndex = 0;
+                for (const catName in grpData.cats) {
+                    const catData = grpData.cats[catName];
+                    const catPct = ((catData.total / grpData.total) * 100).toFixed(1);
+                    const catRowId = `${grpRowId}-cat-${cIndex}`;
+
+                    // Category Row
+                    const trCat = document.createElement('tr');
+                    trCat.className = `row-cat ${grpRowId}`;
+                    trCat.onclick = (e) => { e.stopPropagation(); toggleCat(catRowId, trCat); };
+                    trCat.innerHTML = `
+                        <td class="indent-1"><span class="toggle-icon">▶</span> ${catName}</td>
+                        <td class="text-right"><span class="badge" style="background:#f1f5f9">${catPct}% do grupo</span></td>
+                        <td class="text-right">${fmtBRL(catData.total)}</td>
+                    `;
+                    tbody.appendChild(trCat);
+
+                    // Descriptions Rows
+                    catData.items.forEach(item => {
+                        const trDesc = document.createElement('tr');
+                        trDesc.className = `row-desc ${catRowId}`;
+                        trDesc.innerHTML = `
+                            <td class="indent-2" style="color:#475569;">• ${item.desc} (${item.forn})</td>
+                            <td class="text-right"><span style="font-size:11px; color:#94a3b8;">${item.freq}</span></td>
+                            <td class="text-right">${fmtBRL(item.val)}</td>
+                        `;
+                        tbody.appendChild(trDesc);
+                    });
+
+                    cIndex++;
+                }
+                gIndex++;
+            }
+        }
+
+        function toggleGroup(grpClass, btn) {
+            const catRows = document.querySelectorAll(`.${grpClass}`);
+            const isExpanding = catRows[0].style.display !== 'table-row';
+            
+            catRows.forEach(r => {
+                r.style.display = isExpanding ? 'table-row' : 'none';
+                if (!isExpanding) {
+                    // Hide child descriptions when collapsing
+                    const catId = r.className.split(' ').find(c => c.includes('cat'));
+                    if (catId) {
+                        document.querySelectorAll(`.${catId}`).forEach(d => d.style.display = 'none');
+                        r.classList.remove('expanded');
+                    }
+                }
+            });
+
+            btn.classList.toggle('expanded', isExpanding);
+        }
+
+        function toggleCat(catClass, btn) {
+            const descRows = document.querySelectorAll(`.${catClass}`);
+            const isExpanding = descRows[0].style.display !== 'table-row';
+
+            descRows.forEach(r => {
+                r.style.display = isExpanding ? 'table-row' : 'none';
+            });
+
+            btn.classList.toggle('expanded', isExpanding);
+        }
+
+        // Render Complete Expenses Table
+        function renderFullTable(filterGroup = 'ALL') {
+            const tbody = document.getElementById('fullTableBody');
+            tbody.innerHTML = '';
+
+            const filtered = filterGroup === 'ALL' ? rawData : rawData.filter(r => r.grupo === filterGroup);
+
+            filtered.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${r.data}</td>
+                    <td><strong>${r.grupo}</strong></td>
+                    <td>${r.cat}</td>
+                    <td>${r.subcat}</td>
+                    <td>${r.desc}</td>
+                    <td>${r.forn}</td>
+                    <td><span class="badge">${r.freq}</span></td>
+                    <td class="text-right"><strong>${fmtBRL(r.val)}</strong></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterTable(grp) {
+            const btns = document.querySelectorAll('#group-filter-pills .filter-btn');
+            btns.forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            renderFullTable(grp);
+        }
+
+        // Initialize on load
+        window.onload = () => {
+            lucide.createIcons();
+            initChart();
+            buildDrillTable();
+            renderFullTable();
+        };
+    </script>
+</body>
+</html>
